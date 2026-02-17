@@ -1,0 +1,482 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>USA County Price Filter</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    html, body { height: 100%; margin: 0; }
+    #wrap { position: relative; width: 100%; height: 100%; overflow: hidden; background: #9fd3f2; }
+    #ui {
+      position: absolute; top: 12px; left: 12px; z-index: 2;
+      background: rgba(255,255,255,0.95); border: 1px solid rgba(0,0,0,0.12);
+      border-radius: 12px; padding: 14px 16px; font-family: system-ui, -apple-system, Segoe UI, sans-serif;
+      width: 300px;
+      font-size: 18px;
+      line-height: 1.35;
+    }
+    #value { font-variant-numeric: tabular-nums; font-weight: 700; }
+    #status { font-size: 15px; color: rgba(0,0,0,0.75); margin-top: 10px; white-space: pre-wrap; }
+    #map { position: absolute; inset: 0; }
+    .filter-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .filter-text {
+      flex: 1;
+      min-width: 0;
+    }
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 46px;
+      height: 26px;
+    }
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .switch-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #c7d0d8;
+      transition: 0.2s;
+      border-radius: 26px;
+    }
+    .switch-slider:before {
+      position: absolute;
+      content: "";
+      height: 20px;
+      width: 20px;
+      left: 3px;
+      top: 3px;
+      background-color: #fff;
+      transition: 0.2s;
+      border-radius: 50%;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+    }
+    .switch input:checked + .switch-slider {
+      background-color: #2e7d32;
+    }
+    .switch input:checked + .switch-slider:before {
+      transform: translateX(20px);
+    }
+    #tooltip {
+      position: absolute;
+      z-index: 3;
+      pointer-events: none;
+      display: none;
+      max-width: 460px;
+      padding: 14px 16px;
+      border-radius: 12px;
+      border: 1px solid rgba(0,0,0,0.2);
+      background: rgba(255,255,255,0.98);
+      color: #111;
+      font-family: system-ui, -apple-system, Segoe UI, sans-serif;
+      font-size: 20px;
+      line-height: 1.4;
+      box-shadow: 0 10px 26px rgba(0,0,0,0.2);
+      white-space: pre-line;
+    }
+    @media (max-width: 800px) {
+      #ui {
+        width: min(92vw, 430px);
+        font-size: 16px;
+        padding: 12px 14px;
+      }
+      #status { font-size: 14px; }
+      #tooltip {
+        max-width: min(90vw, 430px);
+        font-size: 18px;
+      }
+    }
+    svg { width: 100%; height: 100%; display: block; }
+    .county { vector-effect: non-scaling-stroke; }
+    .county.hovered {
+      fill: #fdd835 !important;
+      stroke: #111 !important;
+      stroke-width: 1.4 !important;
+      filter: brightness(1.08);
+    }
+  </style>
+
+  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+  <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
+</head>
+<body>
+<div id="wrap">
+  <div id="ui">
+    <div style="font-weight:700; margin-bottom:8px;">U.S. Counties with</div>
+    <div>
+      <div class="filter-row">
+        <div class="filter-text">
+          Median home price up to:
+          <span id="priceValue">$500,000</span>
+        </div>
+        <label class="switch" aria-label="Toggle home price filter">
+          <input id="priceOn" type="checkbox" checked />
+          <span class="switch-slider"></span>
+        </label>
+      </div>
+    </div>
+    <input id="priceSlider" type="range" min="0" max="3000000" step="25000" value="500000" style="width:100%; margin-top:10px; height:32px;" />
+    <div style="margin-top:8px;">
+      <div class="filter-row">
+        <div class="filter-text">
+          Life expectancy at least:
+          <span id="lifeValue">76.0 years</span>
+        </div>
+        <label class="switch" aria-label="Toggle life expectancy filter">
+          <input id="lifeOn" type="checkbox" checked />
+          <span class="switch-slider"></span>
+        </label>
+      </div>
+    </div>
+    <input id="lifeSlider" type="range" min="55" max="95" step="0.1" value="76.0" style="width:100%; margin-top:10px; height:32px;" />
+    <div style="margin-top:8px;">
+      <div class="filter-row">
+        <div class="filter-text">
+          Minimum wage at least:
+          <span id="wageValue">$7.25</span>
+        </div>
+        <label class="switch" aria-label="Toggle minimum wage filter">
+          <input id="wageOn" type="checkbox" checked />
+          <span class="switch-slider"></span>
+        </label>
+      </div>
+    </div>
+    <input id="wageSlider" type="range" min="7" max="25" step="0.25" value="7.25" style="width:100%; margin-top:10px; height:32px;" />
+    <div id="status">Loading...</div>
+  </div>
+  <div id="map"></div>
+  <div id="tooltip"></div>
+</div>
+
+<script>
+(function(){
+  const fmt = (n) => '$' + Number(n).toLocaleString('en-US');
+  const stateNameByFipsPrefix = {
+    "01":"Alabama","02":"Alaska","04":"Arizona","05":"Arkansas","06":"California","08":"Colorado","09":"Connecticut",
+    "10":"Delaware","11":"District of Columbia","12":"Florida","13":"Georgia","15":"Hawaii","16":"Idaho","17":"Illinois",
+    "18":"Indiana","19":"Iowa","20":"Kansas","21":"Kentucky","22":"Louisiana","23":"Maine","24":"Maryland","25":"Massachusetts",
+    "26":"Michigan","27":"Minnesota","28":"Mississippi","29":"Missouri","30":"Montana","31":"Nebraska","32":"Nevada",
+    "33":"New Hampshire","34":"New Jersey","35":"New Mexico","36":"New York","37":"North Carolina","38":"North Dakota",
+    "39":"Ohio","40":"Oklahoma","41":"Oregon","42":"Pennsylvania","44":"Rhode Island","45":"South Carolina","46":"South Dakota",
+    "47":"Tennessee","48":"Texas","49":"Utah","50":"Vermont","51":"Virginia","53":"Washington","54":"West Virginia",
+    "55":"Wisconsin","56":"Wyoming","72":"Puerto Rico"
+  };
+  // Some county datasets still use retired FIPS codes. Map them to current equivalents.
+  const legacyFipsAlias = {
+    "46113": "46102", // Shannon County, SD -> Oglala Lakota County, SD
+    "02270": "02158"  // Wade Hampton CA, AK -> Kusilvak CA, AK
+  };
+  const lsadLabel = (lsad) => {
+    const t = String(lsad || "").trim().toUpperCase();
+    if (!t) return "";
+    if (t === "CA") return "Census Area";
+    if (t === "B") return "Borough";
+    return lsad;
+  };
+  const priceSlider = document.getElementById('priceSlider');
+  const lifeSlider = document.getElementById('lifeSlider');
+  const wageSlider = document.getElementById('wageSlider');
+  const priceOnEl = document.getElementById('priceOn');
+  const lifeOnEl = document.getElementById('lifeOn');
+  const wageOnEl = document.getElementById('wageOn');
+  const priceValueEl = document.getElementById('priceValue');
+  const lifeValueEl = document.getElementById('lifeValue');
+  const wageValueEl = document.getElementById('wageValue');
+  const statusEl = document.getElementById('status');
+  const tooltipEl = document.getElementById('tooltip');
+  priceValueEl.textContent = fmt(priceSlider.value);
+  lifeValueEl.textContent = `${Number(lifeSlider.value).toFixed(1)} years`;
+  wageValueEl.textContent = fmt(Number(wageSlider.value).toFixed(2));
+
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+
+  const svg = d3.select("#map").append("svg")
+    .attr("viewBox", `0 0 ${width} ${height}`);
+
+  const g = svg.append("g");
+
+  const panMargin = 220;
+  const zoom = d3.zoom()
+    .scaleExtent([1, 20])
+    .extent([[0, 0], [width, height]])
+    .translateExtent([[-panMargin, -panMargin], [width + panMargin, height + panMargin]])
+    .on("zoom", (event) => g.attr("transform", event.transform));
+
+  svg.call(zoom);
+
+  function parsePricesTSV(text) {
+    // TSV: fips<TAB>price
+    const prices = new Map();
+    const lines = text.split(/\r?\n/);
+    for (const line of lines) {
+      if (!line.trim() || line.trim().startsWith("#")) continue;
+      const parts = line.split(/\t/);
+      if (parts.length < 2) continue;
+      const fips = parts[0].trim();
+      const price = Number(parts[1].trim());
+      if (!/^\d{5}$/.test(fips)) continue;
+      if (!Number.isFinite(price)) continue;
+      prices.set(fips, price);
+    }
+    return prices;
+  }
+
+  function parseLifeTSV(text) {
+    const life = new Map();
+    const lines = text.split(/\r?\n/);
+    for (const line of lines) {
+      if (!line.trim() || line.trim().startsWith("#")) continue;
+      const parts = line.split(/\t/);
+      if (parts.length < 2) continue;
+      const fips = parts[0].trim();
+      const years = Number(parts[1].trim());
+      if (!/^\d{5}$/.test(fips)) continue;
+      if (!Number.isFinite(years)) continue;
+      life.set(fips, years);
+    }
+    return life;
+  }
+
+  function parseWageTSV(text) {
+    const wage = new Map();
+    const lines = text.split(/\r?\n/);
+    for (const line of lines) {
+      if (!line.trim() || line.trim().startsWith("#")) continue;
+      const parts = line.split(/\t/);
+      if (parts.length < 2) continue;
+      const fips = parts[0].trim();
+      const amount = Number(parts[1].trim());
+      if (!/^\d{5}$/.test(fips)) continue;
+      if (!Number.isFinite(amount)) continue;
+      wage.set(fips, amount);
+    }
+    return wage;
+  }
+
+  function setStatus(msg) { statusEl.textContent = msg; }
+
+  Promise.all([
+    fetch("/counties.json").then(r => {
+      if (!r.ok) throw new Error("Failed to load /counties.json (" + r.status + ")");
+      return r.json();
+    }),
+    fetch("/counties-hires.json").then(r => r.ok ? r.json() : null).catch(() => null),
+    fetch("/prices.tsv").then(r => {
+      if (!r.ok) throw new Error("Failed to load /prices.tsv (" + r.status + ")");
+      return r.text();
+    }),
+    fetch("/life_expectancy.tsv").then(r => {
+      if (!r.ok) throw new Error("Failed to load /life_expectancy.tsv (" + r.status + ")");
+      return r.text();
+    }),
+    fetch("/minimum_wage.tsv").then(r => {
+      if (!r.ok) throw new Error("Failed to load /minimum_wage.tsv (" + r.status + ")");
+      return r.text();
+    })
+  ]).then(([topology, hiresGeo, pricesText, lifeText, wageText]) => {
+    const prices = parsePricesTSV(pricesText);
+    const life = parseLifeTSV(lifeText);
+    const wage = parseWageTSV(wageText);
+
+    const countiesObj = topology.objects && (topology.objects.counties || topology.objects.county);
+    if (!countiesObj) {
+      throw new Error("TopoJSON missing objects.counties (download counties-10m.json from us-atlas as instructed).");
+    }
+
+    const countiesRaw = (hiresGeo && hiresGeo.type === "FeatureCollection")
+      ? hiresGeo
+      : topojson.feature(topology, countiesObj);
+    const counties = countiesRaw;
+
+    const projection = d3.geoAlbersUsa().fitSize([width, height], counties);
+    const path = d3.geoPath(projection);
+
+    function isCityEquivalent(f) {
+      const lsad = f.properties && f.properties.LSAD ? String(f.properties.LSAD).toLowerCase() : "";
+      const rawName = f.properties && (f.properties.name || f.properties.NAME)
+        ? String(f.properties.name || f.properties.NAME).trim()
+        : "";
+      return lsad === "city" || / city$/i.test(rawName) || / city and borough$/i.test(rawName);
+    }
+
+    for (const f of counties.features) {
+      const rawId = String(f.id).padStart(5, "0");
+      const id = legacyFipsAlias[rawId] || rawId;
+      f.properties = f.properties || {};
+      f.properties.fips = id;
+      f.properties.isCity = isCityEquivalent(f);
+      f.properties.price = prices.has(id) ? prices.get(id) : (prices.has(rawId) ? prices.get(rawId) : null);
+      f.properties.life = life.has(rawId) ? life.get(rawId) : (life.has(id) ? life.get(id) : null);
+      f.properties.wage = wage.has(id) ? wage.get(id) : (wage.has(rawId) ? wage.get(rawId) : null);
+    }
+
+    const countyFeatures = counties.features.filter(f => !f.properties.isCity);
+    const totalCounties = countyFeatures.length;
+
+    // Make city-equivalent polygons visually disappear as separate units by inheriting
+    // nearest county values from the same state.
+    const countiesByState = new Map();
+    for (const f of countyFeatures) {
+      const st = String(f.properties.fips).slice(0, 2);
+      if (!countiesByState.has(st)) countiesByState.set(st, []);
+      countiesByState.get(st).push(f);
+    }
+    for (const city of counties.features.filter(f => f.properties.isCity)) {
+      const st = String(city.properties.fips).slice(0, 2);
+      const candidates = countiesByState.get(st) || [];
+      if (candidates.length === 0) continue;
+      const center = d3.geoCentroid(city);
+      let best = candidates[0];
+      let bestDist = Infinity;
+      for (const c of candidates) {
+        const d = d3.geoDistance(center, d3.geoCentroid(c));
+        if (d < bestDist) {
+          bestDist = d;
+          best = c;
+        }
+      }
+      city.properties.price = best.properties.price;
+      city.properties.life = best.properties.life;
+      city.properties.wage = best.properties.wage;
+      city.properties.parentFips = best.properties.fips;
+      city.properties.displayName = (best.properties && (best.properties.name || best.properties.NAME))
+        ? String(best.properties.name || best.properties.NAME).trim()
+        : null;
+      city.properties.displayLSAD = (best.properties && best.properties.LSAD)
+        ? String(best.properties.LSAD).trim()
+        : null;
+    }
+
+    let stateBorderPath = null;
+    const featureGroupFips = (d) => (d.properties && d.properties.isCity && d.properties.parentFips)
+      ? String(d.properties.parentFips)
+      : String(d.properties && d.properties.fips ? d.properties.fips : "");
+    const countySel = g.selectAll("path")
+      .data(counties.features)
+      .join("path")
+      .attr("class", "county")
+      .attr("d", path)
+      .attr("stroke", "rgba(0,0,0,0.3)")
+      .attr("stroke-width", 0.65)
+      .on("mouseenter", function(event, d) {
+        const groupFips = featureGroupFips(d);
+        countySel.classed("hovered", x => featureGroupFips(x) === groupFips);
+        countySel.filter(x => featureGroupFips(x) === groupFips).raise();
+        if (stateBorderPath) stateBorderPath.raise();
+        const p = d.properties.price;
+        const rawName = (d.properties && (d.properties.displayName || d.properties.name || d.properties.NAME))
+          ? String(d.properties.displayName || d.properties.name || d.properties.NAME).trim()
+          : "Unknown";
+        const lsadRaw = d.properties && (d.properties.displayLSAD || d.properties.LSAD) ? String(d.properties.displayLSAD || d.properties.LSAD).trim() : "";
+        const lsad = lsadLabel(lsadRaw);
+        const countyName = lsad ? `${rawName} ${lsad}` : (/ County$/i.test(rawName) ? rawName : `${rawName} County`);
+        const fips = groupFips;
+        const stateName = stateNameByFipsPrefix[fips.slice(0, 2)] || "Unknown";
+        const le = d.properties.life;
+        const mw = d.properties.wage;
+        const priceText = (p == null) ? "Median sale price: N/A" : `Median sale price: ${fmt(p)}`;
+        const lifeTextLine = (le == null) ? "Life expectancy: N/A" : `Life expectancy: ${le.toFixed(1)} years`;
+        const wageTextLine = (mw == null) ? "Minimum wage: N/A" : `Minimum wage: $${mw.toFixed(2)}`;
+        tooltipEl.textContent = `${countyName}, ${stateName}\n${priceText}\n${lifeTextLine}\n${wageTextLine}`;
+        tooltipEl.style.display = "block";
+        tooltipEl.style.left = `${event.clientX + 14}px`;
+        tooltipEl.style.top = `${event.clientY + 14}px`;
+      })
+      .on("mousemove", function(event) {
+        tooltipEl.style.left = `${event.clientX + 14}px`;
+        tooltipEl.style.top = `${event.clientY + 14}px`;
+      })
+      .on("mouseleave", function() {
+        countySel.classed("hovered", false);
+        tooltipEl.style.display = "none";
+      });
+
+    const citySel = countySel
+      .filter(d => d.properties && d.properties.isCity)
+      .attr("stroke", "none")
+      .style("pointer-events", "all")
+      .raise();
+
+    svg.on("mouseleave", () => {
+      countySel.classed("hovered", false);
+      tooltipEl.style.display = "none";
+    });
+
+    const statesObj = topology.objects && topology.objects.states;
+    if (statesObj) {
+      const stateBorders = topojson.mesh(topology, statesObj, (a, b) => a !== b);
+      stateBorderPath = g.append("path")
+        .datum(stateBorders)
+        .attr("d", path)
+        .attr("fill", "none")
+        .attr("stroke", "rgba(0,0,0,0.65)")
+        .attr("stroke-width", 1.1)
+        .attr("pointer-events", "none");
+    }
+
+    function apply() {
+      const maxPrice = Number(priceSlider.value);
+      const minLife = Number(lifeSlider.value);
+      const minWage = Number(wageSlider.value);
+      const usePrice = priceOnEl.checked;
+      const useLife = lifeOnEl.checked;
+      const useWage = wageOnEl.checked;
+      priceValueEl.textContent = fmt(maxPrice);
+      lifeValueEl.textContent = `${minLife.toFixed(1)} years`;
+      wageValueEl.textContent = `$${minWage.toFixed(2)}`;
+      priceSlider.disabled = !usePrice;
+      lifeSlider.disabled = !useLife;
+      wageSlider.disabled = !useWage;
+      let remaining = 0;
+
+      countySel.attr("fill", d => {
+        const p = d.properties.price;
+        const le = d.properties.life;
+        const mw = d.properties.wage;
+        const passPrice = !usePrice || (p != null && p <= maxPrice);
+        const passLife = !useLife || (le != null && le >= minLife);
+        const passWage = !useWage || (mw != null && mw >= minWage);
+        const match = passPrice && passLife && passWage;
+        if (match && !d.properties.isCity) {
+          remaining += 1;
+        }
+        if (match) return "#2e7d32";
+        return "#cfd8dc";
+      });
+      citySel.raise();
+      if (stateBorderPath) stateBorderPath.raise();
+      const activeCount = (usePrice ? 1 : 0) + (useLife ? 1 : 0) + (useWage ? 1 : 0);
+      if (activeCount === 0) {
+        setStatus(`All filters off. Showing all counties: ${remaining} out of ${totalCounties}`);
+      } else {
+        setStatus(`Counties matching ${activeCount} active filter(s): ${remaining} out of ${totalCounties}`);
+      }
+    }
+
+    priceSlider.addEventListener("input", apply);
+    lifeSlider.addEventListener("input", apply);
+    wageSlider.addEventListener("input", apply);
+    priceOnEl.addEventListener("change", apply);
+    lifeOnEl.addEventListener("change", apply);
+    wageOnEl.addEventListener("change", apply);
+    apply();
+  }).catch(err => {
+    setStatus("Error:\n" + (err && err.message ? err.message : String(err)));
+    console.error(err);
+  });
+})();
+</script>
+</body>
+</html>

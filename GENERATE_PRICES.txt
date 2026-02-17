@@ -1,0 +1,21 @@
+Generating prices.tsv from current data
+
+Run com.rich.countyfilter.GeneratePrices.
+
+It downloads and parses:
+- Redfin county market tracker TSV (gzip), which is small and fast
+- Census county codes only when Redfin does not provide county FIPS
+
+Then writes:
+- data/prices.tsv
+- Header: fips<TAB>median_sale_price
+
+Compile (PowerShell):
+  mkdir out -ea 0
+  javac -d out src\main\java\com\rich\countyfilter\Main.java src\main\java\com\rich\countyfilter\GeneratePrices.java
+
+Run generator:
+  java -cp out com.rich.countyfilter.GeneratePrices
+
+Run server:
+  java -cp out com.rich.countyfilter.Main
