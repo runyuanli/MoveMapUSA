@@ -28,6 +28,14 @@
       flex: 1;
       min-width: 0;
     }
+    .scale-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: rgba(0,0,0,0.65);
+      margin-top: 2px;
+      padding: 0 2px;
+    }
     .switch {
       position: relative;
       display: inline-block;
@@ -153,6 +161,25 @@
       </div>
     </div>
     <input id="wageSlider" type="range" min="7" max="25" step="0.25" value="7.25" style="width:100%; margin-top:10px; height:32px;" />
+    <div style="margin-top:8px;">
+      <div class="filter-row">
+        <div class="filter-text">
+          Homicide rate up to (per 100k):
+          <span id="homicideValue">10.0</span>
+        </div>
+        <label class="switch" aria-label="Toggle homicide filter">
+          <input id="homicideOn" type="checkbox" checked />
+          <span class="switch-slider"></span>
+        </label>
+      </div>
+    </div>
+    <div style="font-size:12px; color:rgba(0,0,0,0.65); margin-top:4px;">
+      Safe: &lt; 5, Average: 5–15, Violent: &gt; 15
+    </div>
+    <div style="font-size:12px; color:rgba(0,0,0,0.65); margin-top:2px;">
+      Source: IHME county homicide rate (2019, all ages)
+    </div>
+    <input id="homicideSlider" type="range" min="0" max="50" step="0.5" value="10.0" style="width:100%; margin-top:8px; height:32px;" />
     <div id="status">Loading...</div>
   </div>
   <div id="map"></div>
@@ -187,17 +214,21 @@
   const priceSlider = document.getElementById('priceSlider');
   const lifeSlider = document.getElementById('lifeSlider');
   const wageSlider = document.getElementById('wageSlider');
+  const homicideSlider = document.getElementById('homicideSlider');
   const priceOnEl = document.getElementById('priceOn');
   const lifeOnEl = document.getElementById('lifeOn');
   const wageOnEl = document.getElementById('wageOn');
+  const homicideOnEl = document.getElementById('homicideOn');
   const priceValueEl = document.getElementById('priceValue');
   const lifeValueEl = document.getElementById('lifeValue');
   const wageValueEl = document.getElementById('wageValue');
+  const homicideValueEl = document.getElementById('homicideValue');
   const statusEl = document.getElementById('status');
   const tooltipEl = document.getElementById('tooltip');
   priceValueEl.textContent = fmt(priceSlider.value);
   lifeValueEl.textContent = `${Number(lifeSlider.value).toFixed(1)} years`;
   wageValueEl.textContent = fmt(Number(wageSlider.value).toFixed(2));
+  homicideValueEl.textContent = `${Number(homicideSlider.value).toFixed(1)}`;
 
   const width = window.innerWidth;
   const height = window.innerHeight;
@@ -265,6 +296,22 @@
     return wage;
   }
 
+  function parseHomicideTSV(text) {
+    const homicide = new Map();
+    const lines = text.split(/\r?\n/);
+    for (const line of lines) {
+      if (!line.trim() || line.trim().startsWith("#")) continue;
+      const parts = line.split(/\t/);
+      if (parts.length < 2) continue;
+      const fips = parts[0].trim();
+      const rate = Number(parts[1].trim());
+      if (!/^\d{5}$/.test(fips)) continue;
+      if (!Number.isFinite(rate)) continue;
+      homicide.set(fips, rate);
+    }
+    return homicide;
+  }
+
   function setStatus(msg) { statusEl.textContent = msg; }
 
   Promise.all([
@@ -284,11 +331,16 @@
     fetch("/minimum_wage.tsv").then(r => {
       if (!r.ok) throw new Error("Failed to load /minimum_wage.tsv (" + r.status + ")");
       return r.text();
+    }),
+    fetch("/homicide_rate.tsv").then(r => {
+      if (!r.ok) throw new Error("Failed to load /homicide_rate.tsv (" + r.status + ")");
+      return r.text();
     })
-  ]).then(([topology, hiresGeo, pricesText, lifeText, wageText]) => {
+  ]).then(([topology, hiresGeo, pricesText, lifeText, wageText, homicideText]) => {
     const prices = parsePricesTSV(pricesText);
     const life = parseLifeTSV(lifeText);
     const wage = parseWageTSV(wageText);
+    const homicide = parseHomicideTSV(homicideText);
 
     const countiesObj = topology.objects && (topology.objects.counties || topology.objects.county);
     if (!countiesObj) {
@@ -320,6 +372,7 @@
       f.properties.price = prices.has(id) ? prices.get(id) : (prices.has(rawId) ? prices.get(rawId) : null);
       f.properties.life = life.has(rawId) ? life.get(rawId) : (life.has(id) ? life.get(id) : null);
       f.properties.wage = wage.has(id) ? wage.get(id) : (wage.has(rawId) ? wage.get(rawId) : null);
+      f.properties.homicide = homicide.has(id) ? homicide.get(id) : (homicide.has(rawId) ? homicide.get(rawId) : null);
     }
 
     const countyFeatures = counties.features.filter(f => !f.properties.isCity);
@@ -350,6 +403,7 @@
       city.properties.price = best.properties.price;
       city.properties.life = best.properties.life;
       city.properties.wage = best.properties.wage;
+      city.properties.homicide = best.properties.homicide;
       city.properties.parentFips = best.properties.fips;
       city.properties.displayName = (best.properties && (best.properties.name || best.properties.NAME))
         ? String(best.properties.name || best.properties.NAME).trim()
@@ -386,10 +440,12 @@
         const stateName = stateNameByFipsPrefix[fips.slice(0, 2)] || "Unknown";
         const le = d.properties.life;
         const mw = d.properties.wage;
+        const hr = d.properties.homicide;
         const priceText = (p == null) ? "Median sale price: N/A" : `Median sale price: ${fmt(p)}`;
         const lifeTextLine = (le == null) ? "Life expectancy: N/A" : `Life expectancy: ${le.toFixed(1)} years`;
         const wageTextLine = (mw == null) ? "Minimum wage: N/A" : `Minimum wage: $${mw.toFixed(2)}`;
-        tooltipEl.textContent = `${countyName}, ${stateName}\n${priceText}\n${lifeTextLine}\n${wageTextLine}`;
+        const homicideTextLine = (hr == null) ? "Homicide rate: N/A" : `Homicide rate: ${hr.toFixed(1)} per 100k`;
+        tooltipEl.textContent = `${countyName}, ${stateName}\n${priceText}\n${lifeTextLine}\n${wageTextLine}\n${homicideTextLine}`;
         tooltipEl.style.display = "block";
         tooltipEl.style.left = `${event.clientX + 14}px`;
         tooltipEl.style.top = `${event.clientY + 14}px`;
@@ -430,25 +486,31 @@
       const maxPrice = Number(priceSlider.value);
       const minLife = Number(lifeSlider.value);
       const minWage = Number(wageSlider.value);
+      const maxHomicide = Number(homicideSlider.value);
       const usePrice = priceOnEl.checked;
       const useLife = lifeOnEl.checked;
       const useWage = wageOnEl.checked;
+      const useHomicide = homicideOnEl.checked;
       priceValueEl.textContent = fmt(maxPrice);
       lifeValueEl.textContent = `${minLife.toFixed(1)} years`;
       wageValueEl.textContent = `$${minWage.toFixed(2)}`;
+      homicideValueEl.textContent = `${maxHomicide.toFixed(1)}`;
       priceSlider.disabled = !usePrice;
       lifeSlider.disabled = !useLife;
       wageSlider.disabled = !useWage;
+      homicideSlider.disabled = !useHomicide;
       let remaining = 0;
 
       countySel.attr("fill", d => {
         const p = d.properties.price;
         const le = d.properties.life;
         const mw = d.properties.wage;
+        const hr = d.properties.homicide;
         const passPrice = !usePrice || (p != null && p <= maxPrice);
         const passLife = !useLife || (le != null && le >= minLife);
         const passWage = !useWage || (mw != null && mw >= minWage);
-        const match = passPrice && passLife && passWage;
+        const passHomicide = !useHomicide || (hr != null && hr <= maxHomicide);
+        const match = passPrice && passLife && passWage && passHomicide;
         if (match && !d.properties.isCity) {
           remaining += 1;
         }
@@ -457,7 +519,7 @@
       });
       citySel.raise();
       if (stateBorderPath) stateBorderPath.raise();
-      const activeCount = (usePrice ? 1 : 0) + (useLife ? 1 : 0) + (useWage ? 1 : 0);
+      const activeCount = (usePrice ? 1 : 0) + (useLife ? 1 : 0) + (useWage ? 1 : 0) + (useHomicide ? 1 : 0);
       if (activeCount === 0) {
         setStatus(`All filters off. Showing all counties: ${remaining} out of ${totalCounties}`);
       } else {
@@ -468,9 +530,11 @@
     priceSlider.addEventListener("input", apply);
     lifeSlider.addEventListener("input", apply);
     wageSlider.addEventListener("input", apply);
+    homicideSlider.addEventListener("input", apply);
     priceOnEl.addEventListener("change", apply);
     lifeOnEl.addEventListener("change", apply);
     wageOnEl.addEventListener("change", apply);
+    homicideOnEl.addEventListener("change", apply);
     apply();
   }).catch(err => {
     setStatus("Error:\n" + (err && err.message ? err.message : String(err)));

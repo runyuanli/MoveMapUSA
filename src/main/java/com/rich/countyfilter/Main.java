@@ -113,6 +113,20 @@ public class Main {
             sendBytes(ex, 200, "text/tab-separated-values; charset=utf-8", bytes);
         });
 
+        server.createContext("/homicide_rate.tsv", ex -> {
+            if (!"GET".equalsIgnoreCase(ex.getRequestMethod())) {
+                sendText(ex, 405, "Method Not Allowed");
+                return;
+            }
+            Path p = Path.of("data/homicide_rate.tsv");
+            if (!Files.exists(p)) {
+                sendText(ex, 404, "Missing data/homicide_rate.tsv");
+                return;
+            }
+            byte[] bytes = Files.readAllBytes(p);
+            sendBytes(ex, 200, "text/tab-separated-values; charset=utf-8", bytes);
+        });
+
         server.createContext("/health", ex -> sendText(ex, 200, "ok"));
 
         server.setExecutor(null);
