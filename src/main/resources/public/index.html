@@ -4,43 +4,296 @@
   <meta charset="utf-8" />
   <title>USA County Price Filter</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700&family=Manrope:wght@500;700;800&display=swap" rel="stylesheet">
   <style>
     html, body { height: 100%; margin: 0; }
-    #wrap { position: relative; width: 100%; height: 100%; overflow: hidden; background: #9fd3f2; }
+    :root {
+      --brand-navy: #0f3957;
+      --brand-cyan: #2ab3d6;
+      --brand-sky: #89cff2;
+      --brand-foam: #ecf9ff;
+      --brand-shadow: rgba(9, 42, 69, 0.2);
+      --panel-bg: rgba(255, 255, 255, 0.93);
+      --panel-border: rgba(15, 57, 87, 0.2);
+      --panel-text: #10344d;
+      --panel-muted: rgba(16, 52, 77, 0.68);
+      --accent-green: #2f8a6a;
+      --accent-green-soft: rgba(47, 138, 106, 0.2);
+    }
+    #wrap {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      display: flex;
+      background: linear-gradient(180deg, var(--brand-sky) 0%, #9fd3f2 56%, #93caed 100%);
+    }
+    #sidebar {
+      width: 372px;
+      min-width: 372px;
+      max-width: 372px;
+      height: 100%;
+      box-sizing: border-box;
+      padding: 16px 14px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.84) 100%);
+      backdrop-filter: blur(8px);
+      border-right: 1px solid rgba(15, 57, 87, 0.14);
+      box-shadow: 10px 0 24px rgba(9, 42, 69, 0.12);
+      z-index: 2;
+    }
+    #brand {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #10344d;
+      font-family: "Manrope", system-ui, -apple-system, Segoe UI, sans-serif;
+    }
+    #brand-mark {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: radial-gradient(circle at 28% 24%, #c9efe6 0%, #5ea9b9 38%, #1f567a 100%);
+      position: relative;
+      box-shadow: 0 8px 18px rgba(26, 78, 108, 0.34);
+      overflow: hidden;
+      flex: 0 0 44px;
+    }
+    #brand-mark::before {
+      content: "";
+      position: absolute;
+      left: 8px;
+      right: 8px;
+      top: 9px;
+      bottom: 9px;
+      border: 2px solid rgba(255,255,255,0.9);
+      border-radius: 999px 999px 18px 18px;
+      transform: rotate(-12deg);
+    }
+    #brand-mark::after {
+      content: "";
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #fff;
+      top: 17px;
+      left: 17px;
+      box-shadow: 0 0 0 3px rgba(255,255,255,0.35);
+    }
+    #brand-copy { text-align: left; }
+    #brand h1 {
+      margin: 0;
+      font-family: "Fraunces", Georgia, serif;
+      font-size: 40px;
+      line-height: 1.1;
+      letter-spacing: 0.2px;
+      text-shadow: 0 1px 0 rgba(255,255,255,0.6);
+      color: var(--brand-navy);
+    }
+    #brand p {
+      margin: 1px 0 0;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.38px;
+      color: rgba(15,57,87,0.74);
+    }
     #ui {
-      position: absolute; top: 12px; left: 12px; z-index: 2;
-      background: rgba(255,255,255,0.95); border: 1px solid rgba(0,0,0,0.12);
-      border-radius: 12px; padding: 14px 16px; font-family: system-ui, -apple-system, Segoe UI, sans-serif;
-      width: 300px;
-      font-size: 18px;
+      position: relative;
+      width: 100%;
+      box-sizing: border-box;
+      flex: 1 1 auto;
+      overflow: auto;
+      padding: 16px 16px 14px;
+      border-radius: 16px;
+      border: 1px solid var(--panel-border);
+      background: var(--panel-bg);
+      box-shadow: 0 14px 34px rgba(13, 50, 75, 0.16);
+      backdrop-filter: blur(9px);
+      font-family: "Manrope", system-ui, -apple-system, Segoe UI, sans-serif;
+      color: var(--panel-text);
+      font-size: 16px;
       line-height: 1.35;
     }
-    #value { font-variant-numeric: tabular-nums; font-weight: 700; }
-    #status { font-size: 15px; color: rgba(0,0,0,0.75); margin-top: 10px; white-space: pre-wrap; }
-    #map { position: absolute; inset: 0; }
-    .filter-row {
+    #ui::before {
+      content: "";
+      display: block;
+      height: 2px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, rgba(47, 138, 106, 0.86), rgba(47, 138, 106, 0.24));
+      margin-bottom: 12px;
+    }
+    .panel-title {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: 0.2px;
+      margin-bottom: 10px;
+    }
+    .filter-block {
+      padding: 11px 10px 10px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.64);
+      border: 1px solid rgba(15, 57, 87, 0.08);
+      margin-top: 8px;
+    }
+    .filter-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 8px;
+      gap: 10px;
+      margin-bottom: 8px;
     }
-    .filter-text {
-      flex: 1;
+    .filter-name {
+      font-weight: 700;
+      font-size: 14px;
+      letter-spacing: 0.12px;
+      color: var(--panel-text);
+    }
+    .filter-value {
+      display: inline-block;
+      margin-left: 4px;
+      font-weight: 800;
+      font-size: 14px;
+      color: #0e5f7d;
+    }
+    #value { font-variant-numeric: tabular-nums; font-weight: 700; }
+    #status {
+      margin-top: 10px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      background: rgba(236, 249, 255, 0.88);
+      border: 1px solid rgba(15, 57, 87, 0.1);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--panel-muted);
+      white-space: pre-wrap;
+    }
+    #map {
+      position: relative;
+      flex: 1 1 auto;
       min-width: 0;
+      height: 100%;
+      z-index: 1;
     }
-    .scale-row {
-      display: flex;
-      justify-content: space-between;
-      font-size: 12px;
-      color: rgba(0,0,0,0.65);
-      margin-top: 2px;
-      padding: 0 2px;
+    .filter-note {
+      margin-top: 6px;
+      font-size: 11px;
+      color: var(--panel-muted);
+      line-height: 1.35;
+    }
+    .race-section-title {
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--panel-text);
+      margin-bottom: 6px;
+    }
+    .race-subfilter {
+      padding: 8px 8px 6px;
+      border-radius: 10px;
+      border: 1px solid rgba(15, 57, 87, 0.1);
+      background: rgba(255, 255, 255, 0.6);
+      margin-top: 8px;
+    }
+    .dual-range {
+      position: relative;
+      height: 30px;
+      margin: 0;
+      --min-pct: 0%;
+      --max-pct: 100%;
+    }
+    .dual-range::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 13px;
+      height: 4px;
+      border-radius: 999px;
+      background: linear-gradient(
+        to right,
+        #d8e3ea 0 var(--min-pct),
+        var(--accent-green) var(--min-pct) var(--max-pct),
+        #d8e3ea var(--max-pct) 100%
+      );
+      z-index: 0;
+    }
+    .dual-range.is-disabled::before {
+      background: #d8e3ea;
+    }
+    .dual-range input[type="range"] {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      margin: 0;
+      background: transparent;
+      appearance: none;
+      -webkit-appearance: none;
+      accent-color: transparent;
+      z-index: 1;
+    }
+    .dual-range input[type="range"]::-webkit-slider-runnable-track {
+      height: 4px;
+      background: transparent;
+      border: 0;
+    }
+    .dual-range input[type="range"]::-moz-range-track {
+      height: 4px;
+      background: transparent;
+      border: 0;
+    }
+    .dual-range input[type="range"]::-moz-range-progress {
+      height: 4px;
+      background: transparent;
+    }
+    .dual-range input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 2px solid #ffffff;
+      background: var(--accent-green);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+      margin-top: -5px;
+      pointer-events: auto;
+      position: relative;
+      z-index: 2;
+    }
+    .dual-range.is-disabled input[type="range"]::-webkit-slider-thumb {
+      background: #cad9e3;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.14);
+    }
+    .dual-range input[type="range"]::-moz-range-thumb {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 2px solid #ffffff;
+      background: var(--accent-green);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+      pointer-events: auto;
+      position: relative;
+      z-index: 2;
+    }
+    #ui .dual-range input[type="range"]:disabled {
+      opacity: 1;
+      filter: none;
+    }
+    .dual-range.is-disabled input[type="range"]::-moz-range-thumb {
+      background: #cad9e3;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.14);
     }
     .switch {
       position: relative;
       display: inline-block;
-      width: 46px;
-      height: 26px;
+      width: 42px;
+      height: 24px;
+      flex: 0 0 auto;
     }
     .switch input {
       opacity: 0;
@@ -54,15 +307,15 @@
       left: 0;
       right: 0;
       bottom: 0;
-      background-color: #c7d0d8;
+      background-color: #cad9e3;
       transition: 0.2s;
-      border-radius: 26px;
+      border-radius: 24px;
     }
     .switch-slider:before {
       position: absolute;
       content: "";
-      height: 20px;
-      width: 20px;
+      height: 18px;
+      width: 18px;
       left: 3px;
       top: 3px;
       background-color: #fff;
@@ -71,39 +324,70 @@
       box-shadow: 0 1px 3px rgba(0,0,0,0.25);
     }
     .switch input:checked + .switch-slider {
-      background-color: #2e7d32;
+      background-color: var(--accent-green);
     }
     .switch input:checked + .switch-slider:before {
-      transform: translateX(20px);
+      transform: translateX(18px);
+    }
+    #ui input[type="range"] {
+      width: 100%;
+      height: 30px;
+      margin: 0;
+      accent-color: var(--accent-green);
+      cursor: pointer;
+    }
+    #ui input[type="range"]:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      filter: grayscale(0.25);
     }
     #tooltip {
       position: absolute;
       z-index: 3;
       pointer-events: none;
       display: none;
-      max-width: 460px;
-      padding: 14px 16px;
-      border-radius: 12px;
-      border: 1px solid rgba(0,0,0,0.2);
-      background: rgba(255,255,255,0.98);
-      color: #111;
-      font-family: system-ui, -apple-system, Segoe UI, sans-serif;
-      font-size: 20px;
-      line-height: 1.4;
-      box-shadow: 0 10px 26px rgba(0,0,0,0.2);
+      width: 420px;
+      padding: 16px 18px;
+      border-radius: 14px;
+      border: 1px solid rgba(16, 52, 77, 0.16);
+      background: linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(250,253,255,0.97) 100%);
+      color: #173b53;
+      font-family: "Manrope", system-ui, -apple-system, Segoe UI, sans-serif;
+      font-size: 21px;
+      font-weight: 650;
+      letter-spacing: 0.1px;
+      line-height: 1.48;
+      box-shadow: 0 14px 34px rgba(9, 42, 69, 0.24);
       white-space: pre-line;
+      backdrop-filter: blur(4px);
+      box-sizing: border-box;
     }
     @media (max-width: 800px) {
+      #wrap {
+        flex-direction: column;
+      }
+      #sidebar {
+        width: 100%;
+        min-width: 0;
+        max-width: none;
+        height: auto;
+        border-right: none;
+        border-bottom: 1px solid rgba(15, 57, 87, 0.14);
+        box-shadow: 0 8px 20px rgba(9, 42, 69, 0.12);
+      }
       #ui {
-        width: min(92vw, 430px);
+        width: 100%;
         font-size: 16px;
         padding: 12px 14px;
+        max-height: 50vh;
       }
       #status { font-size: 14px; }
       #tooltip {
-        max-width: min(90vw, 430px);
-        font-size: 18px;
+        width: min(90vw, 440px);
+        font-size: 19px;
       }
+      #brand h1 { font-size: 34px; }
+      #map { min-height: 50vh; }
     }
     svg { width: 100%; height: 100%; display: block; }
     .county { vector-effect: non-scaling-stroke; }
@@ -120,67 +404,140 @@
 </head>
 <body>
 <div id="wrap">
-  <div id="ui">
-    <div style="font-weight:700; margin-bottom:8px;">U.S. Counties with</div>
-    <div>
-      <div class="filter-row">
-        <div class="filter-text">
-          Median home price up to:
-          <span id="priceValue">$500,000</span>
-        </div>
-        <label class="switch" aria-label="Toggle home price filter">
-          <input id="priceOn" type="checkbox" checked />
-          <span class="switch-slider"></span>
-        </label>
+  <div id="sidebar">
+    <div id="brand">
+      <div id="brand-mark"></div>
+      <div id="brand-copy">
+        <h1>MoveMap</h1>
+        <p>Move Somewhere Livable</p>
       </div>
     </div>
-    <input id="priceSlider" type="range" min="0" max="3000000" step="25000" value="500000" style="width:100%; margin-top:10px; height:32px;" />
-    <div style="margin-top:8px;">
-      <div class="filter-row">
-        <div class="filter-text">
-          Life expectancy at least:
-          <span id="lifeValue">76.0 years</span>
+    <div id="ui">
+      <div class="panel-title">U.S. Counties with</div>
+      <div class="filter-block">
+        <div class="filter-header">
+          <div class="filter-name">
+            Median home price up to
+            <span class="filter-value" id="priceValue">$500,000</span>
+          </div>
+          <label class="switch" aria-label="Toggle home price filter">
+            <input id="priceOn" type="checkbox" checked />
+            <span class="switch-slider"></span>
+          </label>
         </div>
-        <label class="switch" aria-label="Toggle life expectancy filter">
-          <input id="lifeOn" type="checkbox" checked />
-          <span class="switch-slider"></span>
-        </label>
+        <input id="priceSlider" type="range" min="0" max="3000000" step="25000" value="500000" />
       </div>
-    </div>
-    <input id="lifeSlider" type="range" min="55" max="95" step="0.1" value="76.0" style="width:100%; margin-top:10px; height:32px;" />
-    <div style="margin-top:8px;">
-      <div class="filter-row">
-        <div class="filter-text">
-          Minimum wage at least:
-          <span id="wageValue">$7.25</span>
+      <div class="filter-block">
+        <div class="filter-header">
+          <div class="filter-name">
+            Life expectancy at least
+            <span class="filter-value" id="lifeValue">76.0 years</span>
+          </div>
+          <label class="switch" aria-label="Toggle life expectancy filter">
+            <input id="lifeOn" type="checkbox" />
+            <span class="switch-slider"></span>
+          </label>
         </div>
-        <label class="switch" aria-label="Toggle minimum wage filter">
-          <input id="wageOn" type="checkbox" checked />
-          <span class="switch-slider"></span>
-        </label>
+        <input id="lifeSlider" type="range" min="55" max="95" step="0.1" value="76.0" />
       </div>
-    </div>
-    <input id="wageSlider" type="range" min="7" max="25" step="0.25" value="7.25" style="width:100%; margin-top:10px; height:32px;" />
-    <div style="margin-top:8px;">
-      <div class="filter-row">
-        <div class="filter-text">
-          Homicide rate up to (per 100k):
-          <span id="homicideValue">10.0</span>
+      <div class="filter-block">
+        <div class="filter-header">
+          <div class="filter-name">
+            Minimum wage at least
+            <span class="filter-value" id="wageValue">$7.25</span>
+          </div>
+          <label class="switch" aria-label="Toggle minimum wage filter">
+            <input id="wageOn" type="checkbox" />
+            <span class="switch-slider"></span>
+          </label>
         </div>
-        <label class="switch" aria-label="Toggle homicide filter">
-          <input id="homicideOn" type="checkbox" checked />
-          <span class="switch-slider"></span>
-        </label>
+        <input id="wageSlider" type="range" min="7" max="25" step="0.25" value="7.25" />
       </div>
+      <div class="filter-block">
+        <div class="filter-header">
+          <div class="filter-name">
+            Homicide rate up to (per 100k)
+            <span class="filter-value" id="homicideValue">10.0</span>
+          </div>
+          <label class="switch" aria-label="Toggle homicide filter">
+            <input id="homicideOn" type="checkbox" />
+            <span class="switch-slider"></span>
+          </label>
+        </div>
+        <input id="homicideSlider" type="range" min="0" max="50" step="0.5" value="10.0" />
+        <div class="filter-note">Safe: &lt; 5, Average: 5&ndash;15, Violent: &gt; 15</div>
+        <div class="filter-note">Source: IHME county homicide rate (2019, all ages)</div>
+      </div>
+      <div class="filter-block">
+        <div class="race-section-title">Race share between</div>
+        <div class="filter-note">Enable any combination below (0% to 100%).</div>
+        <div class="race-subfilter">
+          <div class="filter-header">
+            <div class="filter-name">
+              White
+              <span class="filter-value" id="whiteRaceValue">0.0% - 100.0%</span>
+            </div>
+            <label class="switch" aria-label="Toggle white race filter">
+              <input id="whiteRaceOn" type="checkbox" />
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+          <div class="dual-range">
+            <input id="whiteRaceMin" type="range" min="0" max="100" step="0.1" value="0" />
+            <input id="whiteRaceMax" type="range" min="0" max="100" step="0.1" value="100" />
+          </div>
+        </div>
+        <div class="race-subfilter">
+          <div class="filter-header">
+            <div class="filter-name">
+              Black
+              <span class="filter-value" id="blackRaceValue">0.0% - 100.0%</span>
+            </div>
+            <label class="switch" aria-label="Toggle black race filter">
+              <input id="blackRaceOn" type="checkbox" />
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+          <div class="dual-range">
+            <input id="blackRaceMin" type="range" min="0" max="100" step="0.1" value="0" />
+            <input id="blackRaceMax" type="range" min="0" max="100" step="0.1" value="100" />
+          </div>
+        </div>
+        <div class="race-subfilter">
+          <div class="filter-header">
+            <div class="filter-name">
+              Asian
+              <span class="filter-value" id="asianRaceValue">0.0% - 100.0%</span>
+            </div>
+            <label class="switch" aria-label="Toggle asian race filter">
+              <input id="asianRaceOn" type="checkbox" />
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+          <div class="dual-range">
+            <input id="asianRaceMin" type="range" min="0" max="100" step="0.1" value="0" />
+            <input id="asianRaceMax" type="range" min="0" max="100" step="0.1" value="100" />
+          </div>
+        </div>
+        <div class="race-subfilter">
+          <div class="filter-header">
+            <div class="filter-name">
+              Hispanic
+              <span class="filter-value" id="hispanicRaceValue">0.0% - 100.0%</span>
+            </div>
+            <label class="switch" aria-label="Toggle hispanic race filter">
+              <input id="hispanicRaceOn" type="checkbox" />
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+          <div class="dual-range">
+            <input id="hispanicRaceMin" type="range" min="0" max="100" step="0.1" value="0" />
+            <input id="hispanicRaceMax" type="range" min="0" max="100" step="0.1" value="100" />
+          </div>
+        </div>
+      </div>
+      <div id="status">Loading...</div>
     </div>
-    <div style="font-size:12px; color:rgba(0,0,0,0.65); margin-top:4px;">
-      Safe: &lt; 5, Average: 5–15, Violent: &gt; 15
-    </div>
-    <div style="font-size:12px; color:rgba(0,0,0,0.65); margin-top:2px;">
-      Source: IHME county homicide rate (2019, all ages)
-    </div>
-    <input id="homicideSlider" type="range" min="0" max="50" step="0.5" value="10.0" style="width:100%; margin-top:8px; height:32px;" />
-    <div id="status">Loading...</div>
   </div>
   <div id="map"></div>
   <div id="tooltip"></div>
@@ -215,23 +572,44 @@
   const lifeSlider = document.getElementById('lifeSlider');
   const wageSlider = document.getElementById('wageSlider');
   const homicideSlider = document.getElementById('homicideSlider');
+  const whiteRaceMinEl = document.getElementById('whiteRaceMin');
+  const whiteRaceMaxEl = document.getElementById('whiteRaceMax');
+  const blackRaceMinEl = document.getElementById('blackRaceMin');
+  const blackRaceMaxEl = document.getElementById('blackRaceMax');
+  const asianRaceMinEl = document.getElementById('asianRaceMin');
+  const asianRaceMaxEl = document.getElementById('asianRaceMax');
+  const hispanicRaceMinEl = document.getElementById('hispanicRaceMin');
+  const hispanicRaceMaxEl = document.getElementById('hispanicRaceMax');
   const priceOnEl = document.getElementById('priceOn');
   const lifeOnEl = document.getElementById('lifeOn');
   const wageOnEl = document.getElementById('wageOn');
   const homicideOnEl = document.getElementById('homicideOn');
+  const whiteRaceOnEl = document.getElementById('whiteRaceOn');
+  const blackRaceOnEl = document.getElementById('blackRaceOn');
+  const asianRaceOnEl = document.getElementById('asianRaceOn');
+  const hispanicRaceOnEl = document.getElementById('hispanicRaceOn');
   const priceValueEl = document.getElementById('priceValue');
   const lifeValueEl = document.getElementById('lifeValue');
   const wageValueEl = document.getElementById('wageValue');
   const homicideValueEl = document.getElementById('homicideValue');
+  const whiteRaceValueEl = document.getElementById('whiteRaceValue');
+  const blackRaceValueEl = document.getElementById('blackRaceValue');
+  const asianRaceValueEl = document.getElementById('asianRaceValue');
+  const hispanicRaceValueEl = document.getElementById('hispanicRaceValue');
   const statusEl = document.getElementById('status');
   const tooltipEl = document.getElementById('tooltip');
   priceValueEl.textContent = fmt(priceSlider.value);
   lifeValueEl.textContent = `${Number(lifeSlider.value).toFixed(1)} years`;
   wageValueEl.textContent = fmt(Number(wageSlider.value).toFixed(2));
   homicideValueEl.textContent = `${Number(homicideSlider.value).toFixed(1)}`;
+  whiteRaceValueEl.textContent = `${Number(whiteRaceMinEl.value).toFixed(1)}% - ${Number(whiteRaceMaxEl.value).toFixed(1)}%`;
+  blackRaceValueEl.textContent = `${Number(blackRaceMinEl.value).toFixed(1)}% - ${Number(blackRaceMaxEl.value).toFixed(1)}%`;
+  asianRaceValueEl.textContent = `${Number(asianRaceMinEl.value).toFixed(1)}% - ${Number(asianRaceMaxEl.value).toFixed(1)}%`;
+  hispanicRaceValueEl.textContent = `${Number(hispanicRaceMinEl.value).toFixed(1)}% - ${Number(hispanicRaceMaxEl.value).toFixed(1)}%`;
 
-  const width = window.innerWidth;
-  const height = window.innerHeight;
+  const mapEl = document.getElementById('map');
+  const width = Math.max(1, mapEl.clientWidth || window.innerWidth);
+  const height = Math.max(1, mapEl.clientHeight || window.innerHeight);
 
   const svg = d3.select("#map").append("svg")
     .attr("viewBox", `0 0 ${width} ${height}`);
@@ -312,7 +690,66 @@
     return homicide;
   }
 
+  function parseRaceTSV(text) {
+    const race = new Map();
+    const lines = text.split(/\r?\n/);
+    for (const line of lines) {
+      if (!line.trim() || line.trim().startsWith("#")) continue;
+      const parts = line.split(/\t/);
+      if (parts.length < 5) continue;
+      const fips = parts[0].trim();
+      const white = Number(parts[1].trim());
+      const black = Number(parts[2].trim());
+      const asian = Number(parts[3].trim());
+      const hispanic = Number(parts[4].trim());
+      if (!/^\d{5}$/.test(fips)) continue;
+      if (![white, black, asian, hispanic].every(Number.isFinite)) continue;
+      race.set(fips, { white, black, asian, hispanic });
+    }
+    return race;
+  }
+
   function setStatus(msg) { statusEl.textContent = msg; }
+  function normalizeRange(minEl, maxEl) {
+    let min = Number(minEl.value);
+    let max = Number(maxEl.value);
+    if (min > max) {
+      const t = min;
+      min = max;
+      max = t;
+      minEl.value = String(min);
+      maxEl.value = String(max);
+    }
+    return [min, max];
+  }
+  function updateDualRangeFill(minEl, maxEl) {
+    const wrap = minEl.closest(".dual-range");
+    if (!wrap) return;
+    const minVal = Number(minEl.min || 0);
+    const maxVal = Number(minEl.max || 100);
+    const span = Math.max(1e-9, maxVal - minVal);
+    const low = ((Number(minEl.value) - minVal) / span) * 100;
+    const high = ((Number(maxEl.value) - minVal) / span) * 100;
+    wrap.style.setProperty("--min-pct", `${Math.max(0, Math.min(100, low))}%`);
+    wrap.style.setProperty("--max-pct", `${Math.max(0, Math.min(100, high))}%`);
+  }
+  function placeTooltip(event) {
+    const gap = 14;
+    const edge = 8;
+    const rect = tooltipEl.getBoundingClientRect();
+    let left = event.clientX + gap;
+    let top = event.clientY + gap;
+    if (left + rect.width > window.innerWidth - edge) {
+      left = event.clientX - gap - rect.width;
+    }
+    if (left < edge) left = edge;
+    if (top + rect.height > window.innerHeight - edge) {
+      top = event.clientY - gap - rect.height;
+    }
+    if (top < edge) top = edge;
+    tooltipEl.style.left = `${left}px`;
+    tooltipEl.style.top = `${top}px`;
+  }
 
   Promise.all([
     fetch("/counties.json").then(r => {
@@ -335,12 +772,17 @@
     fetch("/homicide_rate.tsv").then(r => {
       if (!r.ok) throw new Error("Failed to load /homicide_rate.tsv (" + r.status + ")");
       return r.text();
+    }),
+    fetch("/race_data.tsv").then(r => {
+      if (!r.ok) throw new Error("Failed to load /race_data.tsv (" + r.status + ")");
+      return r.text();
     })
-  ]).then(([topology, hiresGeo, pricesText, lifeText, wageText, homicideText]) => {
+  ]).then(([topology, hiresGeo, pricesText, lifeText, wageText, homicideText, raceText]) => {
     const prices = parsePricesTSV(pricesText);
     const life = parseLifeTSV(lifeText);
     const wage = parseWageTSV(wageText);
     const homicide = parseHomicideTSV(homicideText);
+    const race = parseRaceTSV(raceText);
 
     const countiesObj = topology.objects && (topology.objects.counties || topology.objects.county);
     if (!countiesObj) {
@@ -373,6 +815,7 @@
       f.properties.life = life.has(rawId) ? life.get(rawId) : (life.has(id) ? life.get(id) : null);
       f.properties.wage = wage.has(id) ? wage.get(id) : (wage.has(rawId) ? wage.get(rawId) : null);
       f.properties.homicide = homicide.has(id) ? homicide.get(id) : (homicide.has(rawId) ? homicide.get(rawId) : null);
+      f.properties.race = race.get(id) || race.get(rawId) || null;
     }
 
     const countyFeatures = counties.features.filter(f => !f.properties.isCity);
@@ -404,6 +847,7 @@
       city.properties.life = best.properties.life;
       city.properties.wage = best.properties.wage;
       city.properties.homicide = best.properties.homicide;
+      city.properties.race = best.properties.race;
       city.properties.parentFips = best.properties.fips;
       city.properties.displayName = (best.properties && (best.properties.name || best.properties.NAME))
         ? String(best.properties.name || best.properties.NAME).trim()
@@ -441,18 +885,21 @@
         const le = d.properties.life;
         const mw = d.properties.wage;
         const hr = d.properties.homicide;
+        const raceData = d.properties.race;
         const priceText = (p == null) ? "Median sale price: N/A" : `Median sale price: ${fmt(p)}`;
         const lifeTextLine = (le == null) ? "Life expectancy: N/A" : `Life expectancy: ${le.toFixed(1)} years`;
         const wageTextLine = (mw == null) ? "Minimum wage: N/A" : `Minimum wage: $${mw.toFixed(2)}`;
         const homicideTextLine = (hr == null) ? "Homicide rate: N/A" : `Homicide rate: ${hr.toFixed(1)} per 100k`;
-        tooltipEl.textContent = `${countyName}, ${stateName}\n${priceText}\n${lifeTextLine}\n${wageTextLine}\n${homicideTextLine}`;
+        const raceWhiteLine = (raceData == null) ? "White: N/A" : `White: ${raceData.white.toFixed(1)}%`;
+        const raceBlackLine = (raceData == null) ? "Black: N/A" : `Black: ${raceData.black.toFixed(1)}%`;
+        const raceAsianLine = (raceData == null) ? "Asian: N/A" : `Asian: ${raceData.asian.toFixed(1)}%`;
+        const raceHispanicLine = (raceData == null) ? "Hispanic: N/A" : `Hispanic: ${raceData.hispanic.toFixed(1)}%`;
+        tooltipEl.textContent = `${countyName}, ${stateName}\n${priceText}\n${lifeTextLine}\n${wageTextLine}\n${homicideTextLine}\n${raceWhiteLine}\n${raceBlackLine}\n${raceAsianLine}\n${raceHispanicLine}`;
         tooltipEl.style.display = "block";
-        tooltipEl.style.left = `${event.clientX + 14}px`;
-        tooltipEl.style.top = `${event.clientY + 14}px`;
+        placeTooltip(event);
       })
       .on("mousemove", function(event) {
-        tooltipEl.style.left = `${event.clientX + 14}px`;
-        tooltipEl.style.top = `${event.clientY + 14}px`;
+        placeTooltip(event);
       })
       .on("mouseleave", function() {
         countySel.classed("hovered", false);
@@ -487,18 +934,50 @@
       const minLife = Number(lifeSlider.value);
       const minWage = Number(wageSlider.value);
       const maxHomicide = Number(homicideSlider.value);
+      const [whiteMin, whiteMax] = normalizeRange(whiteRaceMinEl, whiteRaceMaxEl);
+      const [blackMin, blackMax] = normalizeRange(blackRaceMinEl, blackRaceMaxEl);
+      const [asianMin, asianMax] = normalizeRange(asianRaceMinEl, asianRaceMaxEl);
+      const [hispanicMin, hispanicMax] = normalizeRange(hispanicRaceMinEl, hispanicRaceMaxEl);
+      updateDualRangeFill(whiteRaceMinEl, whiteRaceMaxEl);
+      updateDualRangeFill(blackRaceMinEl, blackRaceMaxEl);
+      updateDualRangeFill(asianRaceMinEl, asianRaceMaxEl);
+      updateDualRangeFill(hispanicRaceMinEl, hispanicRaceMaxEl);
       const usePrice = priceOnEl.checked;
       const useLife = lifeOnEl.checked;
       const useWage = wageOnEl.checked;
       const useHomicide = homicideOnEl.checked;
+      const useWhiteRace = whiteRaceOnEl.checked;
+      const useBlackRace = blackRaceOnEl.checked;
+      const useAsianRace = asianRaceOnEl.checked;
+      const useHispanicRace = hispanicRaceOnEl.checked;
       priceValueEl.textContent = fmt(maxPrice);
       lifeValueEl.textContent = `${minLife.toFixed(1)} years`;
       wageValueEl.textContent = `$${minWage.toFixed(2)}`;
       homicideValueEl.textContent = `${maxHomicide.toFixed(1)}`;
+      whiteRaceValueEl.textContent = `${whiteMin.toFixed(1)}% - ${whiteMax.toFixed(1)}%`;
+      blackRaceValueEl.textContent = `${blackMin.toFixed(1)}% - ${blackMax.toFixed(1)}%`;
+      asianRaceValueEl.textContent = `${asianMin.toFixed(1)}% - ${asianMax.toFixed(1)}%`;
+      hispanicRaceValueEl.textContent = `${hispanicMin.toFixed(1)}% - ${hispanicMax.toFixed(1)}%`;
       priceSlider.disabled = !usePrice;
       lifeSlider.disabled = !useLife;
       wageSlider.disabled = !useWage;
       homicideSlider.disabled = !useHomicide;
+      whiteRaceMinEl.disabled = !useWhiteRace;
+      whiteRaceMaxEl.disabled = !useWhiteRace;
+      blackRaceMinEl.disabled = !useBlackRace;
+      blackRaceMaxEl.disabled = !useBlackRace;
+      asianRaceMinEl.disabled = !useAsianRace;
+      asianRaceMaxEl.disabled = !useAsianRace;
+      hispanicRaceMinEl.disabled = !useHispanicRace;
+      hispanicRaceMaxEl.disabled = !useHispanicRace;
+      const whiteWrap = whiteRaceMinEl.closest(".dual-range");
+      const blackWrap = blackRaceMinEl.closest(".dual-range");
+      const asianWrap = asianRaceMinEl.closest(".dual-range");
+      const hispanicWrap = hispanicRaceMinEl.closest(".dual-range");
+      if (whiteWrap) whiteWrap.classList.toggle("is-disabled", !useWhiteRace);
+      if (blackWrap) blackWrap.classList.toggle("is-disabled", !useBlackRace);
+      if (asianWrap) asianWrap.classList.toggle("is-disabled", !useAsianRace);
+      if (hispanicWrap) hispanicWrap.classList.toggle("is-disabled", !useHispanicRace);
       let remaining = 0;
 
       countySel.attr("fill", d => {
@@ -506,20 +985,26 @@
         const le = d.properties.life;
         const mw = d.properties.wage;
         const hr = d.properties.homicide;
+        const raceData = d.properties.race;
         const passPrice = !usePrice || (p != null && p <= maxPrice);
         const passLife = !useLife || (le != null && le >= minLife);
         const passWage = !useWage || (mw != null && mw >= minWage);
         const passHomicide = !useHomicide || (hr != null && hr <= maxHomicide);
-        const match = passPrice && passLife && passWage && passHomicide;
+        const passWhiteRace = !useWhiteRace || (raceData != null && raceData.white >= whiteMin && raceData.white <= whiteMax);
+        const passBlackRace = !useBlackRace || (raceData != null && raceData.black >= blackMin && raceData.black <= blackMax);
+        const passAsianRace = !useAsianRace || (raceData != null && raceData.asian >= asianMin && raceData.asian <= asianMax);
+        const passHispanicRace = !useHispanicRace || (raceData != null && raceData.hispanic >= hispanicMin && raceData.hispanic <= hispanicMax);
+        const match = passPrice && passLife && passWage && passHomicide && passWhiteRace && passBlackRace && passAsianRace && passHispanicRace;
         if (match && !d.properties.isCity) {
           remaining += 1;
         }
-        if (match) return "#2e7d32";
+        if (match) return getComputedStyle(document.documentElement).getPropertyValue("--accent-green").trim() || "#2f8a6a";
         return "#cfd8dc";
       });
       citySel.raise();
       if (stateBorderPath) stateBorderPath.raise();
-      const activeCount = (usePrice ? 1 : 0) + (useLife ? 1 : 0) + (useWage ? 1 : 0) + (useHomicide ? 1 : 0);
+      const activeCount = (usePrice ? 1 : 0) + (useLife ? 1 : 0) + (useWage ? 1 : 0) + (useHomicide ? 1 : 0)
+        + (useWhiteRace ? 1 : 0) + (useBlackRace ? 1 : 0) + (useAsianRace ? 1 : 0) + (useHispanicRace ? 1 : 0);
       if (activeCount === 0) {
         setStatus(`All filters off. Showing all counties: ${remaining} out of ${totalCounties}`);
       } else {
@@ -531,10 +1016,22 @@
     lifeSlider.addEventListener("input", apply);
     wageSlider.addEventListener("input", apply);
     homicideSlider.addEventListener("input", apply);
+    whiteRaceMinEl.addEventListener("input", apply);
+    whiteRaceMaxEl.addEventListener("input", apply);
+    blackRaceMinEl.addEventListener("input", apply);
+    blackRaceMaxEl.addEventListener("input", apply);
+    asianRaceMinEl.addEventListener("input", apply);
+    asianRaceMaxEl.addEventListener("input", apply);
+    hispanicRaceMinEl.addEventListener("input", apply);
+    hispanicRaceMaxEl.addEventListener("input", apply);
     priceOnEl.addEventListener("change", apply);
     lifeOnEl.addEventListener("change", apply);
     wageOnEl.addEventListener("change", apply);
     homicideOnEl.addEventListener("change", apply);
+    whiteRaceOnEl.addEventListener("change", apply);
+    blackRaceOnEl.addEventListener("change", apply);
+    asianRaceOnEl.addEventListener("change", apply);
+    hispanicRaceOnEl.addEventListener("change", apply);
     apply();
   }).catch(err => {
     setStatus("Error:\n" + (err && err.message ? err.message : String(err)));
