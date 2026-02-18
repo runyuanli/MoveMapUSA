@@ -22,3 +22,21 @@ fips	median_sale_price
 ```powershell
 java -cp out com.rich.countyfilter.Main
 ```
+
+## Publish on GitHub Pages (free)
+
+This repo includes a ready `docs/` folder for static hosting.
+
+1. Push your latest commit to `main`.
+2. In GitHub: `Settings` -> `Pages`.
+3. Under `Build and deployment`:
+   - `Source`: `Deploy from a branch`
+   - `Branch`: `main`
+   - `Folder`: `/docs`
+4. Save, then wait ~1 minute.
+
+Your site URL will be:
+
+```text
+https://runyuanli.github.io/MoveMapUSA/
+```
