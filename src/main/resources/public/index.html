@@ -353,14 +353,37 @@
       background: linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(250,253,255,0.97) 100%);
       color: #173b53;
       font-family: "Manrope", system-ui, -apple-system, Segoe UI, sans-serif;
-      font-size: 21px;
-      font-weight: 650;
+      font-size: 19px;
+      font-weight: 500;
       letter-spacing: 0.1px;
-      line-height: 1.48;
+      line-height: 1.42;
       box-shadow: 0 14px 34px rgba(9, 42, 69, 0.24);
-      white-space: pre-line;
       backdrop-filter: blur(4px);
       box-sizing: border-box;
+    }
+    .tooltip-title {
+      display: block;
+      font-family: "Fraunces", Georgia, serif;
+      font-size: 24px;
+      line-height: 1.2;
+      font-weight: 700;
+      letter-spacing: 0.15px;
+      color: #10344d;
+      margin: -2px -2px 10px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid rgba(16, 52, 77, 0.18);
+    }
+    .tooltip-row {
+      display: block;
+      margin: 1px 0;
+    }
+    .tooltip-label {
+      font-weight: 750;
+      color: #17435d;
+    }
+    .tooltip-value {
+      font-weight: 500;
+      color: #173b53;
     }
     @media (max-width: 800px) {
       #wrap {
@@ -417,7 +440,7 @@
       <div class="filter-block">
         <div class="filter-header">
           <div class="filter-name">
-            Median home price up to
+            Median home price below
             <span class="filter-value" id="priceValue">$500,000</span>
           </div>
           <label class="switch" aria-label="Toggle home price filter">
@@ -456,7 +479,7 @@
       <div class="filter-block">
         <div class="filter-header">
           <div class="filter-name">
-            Homicide rate up to (per 100k)
+            Homicide rate below (per 100k)
             <span class="filter-value" id="homicideValue">10.0</span>
           </div>
           <label class="switch" aria-label="Toggle homicide filter">
@@ -470,7 +493,6 @@
       </div>
       <div class="filter-block">
         <div class="race-section-title">Race share between</div>
-        <div class="filter-note">Enable any combination below (0% to 100%).</div>
         <div class="race-subfilter">
           <div class="filter-header">
             <div class="filter-name">
@@ -886,15 +908,49 @@
         const mw = d.properties.wage;
         const hr = d.properties.homicide;
         const raceData = d.properties.race;
-        const priceText = (p == null) ? "Median sale price: N/A" : `Median sale price: ${fmt(p)}`;
-        const lifeTextLine = (le == null) ? "Life expectancy: N/A" : `Life expectancy: ${le.toFixed(1)} years`;
-        const wageTextLine = (mw == null) ? "Minimum wage: N/A" : `Minimum wage: $${mw.toFixed(2)}`;
-        const homicideTextLine = (hr == null) ? "Homicide rate: N/A" : `Homicide rate: ${hr.toFixed(1)} per 100k`;
-        const raceWhiteLine = (raceData == null) ? "White: N/A" : `White: ${raceData.white.toFixed(1)}%`;
-        const raceBlackLine = (raceData == null) ? "Black: N/A" : `Black: ${raceData.black.toFixed(1)}%`;
-        const raceAsianLine = (raceData == null) ? "Asian: N/A" : `Asian: ${raceData.asian.toFixed(1)}%`;
-        const raceHispanicLine = (raceData == null) ? "Hispanic: N/A" : `Hispanic: ${raceData.hispanic.toFixed(1)}%`;
-        tooltipEl.textContent = `${countyName}, ${stateName}\n${priceText}\n${lifeTextLine}\n${wageTextLine}\n${homicideTextLine}\n${raceWhiteLine}\n${raceBlackLine}\n${raceAsianLine}\n${raceHispanicLine}`;
+        const lines = [];
+        lines.push(`<div class="tooltip-title">${countyName}, ${stateName}</div>`);
+        if (priceOnEl.checked) {
+          lines.push((p == null)
+            ? `<span class="tooltip-row"><span class="tooltip-label">Median sale price:</span> <span class="tooltip-value">N/A</span></span>`
+            : `<span class="tooltip-row"><span class="tooltip-label">Median sale price:</span> <span class="tooltip-value">${fmt(p)}</span></span>`);
+        }
+        if (lifeOnEl.checked) {
+          lines.push((le == null)
+            ? `<span class="tooltip-row"><span class="tooltip-label">Life expectancy:</span> <span class="tooltip-value">N/A</span></span>`
+            : `<span class="tooltip-row"><span class="tooltip-label">Life expectancy:</span> <span class="tooltip-value">${le.toFixed(1)} years</span></span>`);
+        }
+        if (wageOnEl.checked) {
+          lines.push((mw == null)
+            ? `<span class="tooltip-row"><span class="tooltip-label">Minimum wage:</span> <span class="tooltip-value">N/A</span></span>`
+            : `<span class="tooltip-row"><span class="tooltip-label">Minimum wage:</span> <span class="tooltip-value">$${mw.toFixed(2)}</span></span>`);
+        }
+        if (homicideOnEl.checked) {
+          lines.push((hr == null)
+            ? `<span class="tooltip-row"><span class="tooltip-label">Homicide rate:</span> <span class="tooltip-value">N/A</span></span>`
+            : `<span class="tooltip-row"><span class="tooltip-label">Homicide rate:</span> <span class="tooltip-value">${hr.toFixed(1)} per 100k</span></span>`);
+        }
+        if (whiteRaceOnEl.checked) {
+          lines.push((raceData == null)
+            ? `<span class="tooltip-row"><span class="tooltip-label">White:</span> <span class="tooltip-value">N/A</span></span>`
+            : `<span class="tooltip-row"><span class="tooltip-label">White:</span> <span class="tooltip-value">${raceData.white.toFixed(1)}%</span></span>`);
+        }
+        if (blackRaceOnEl.checked) {
+          lines.push((raceData == null)
+            ? `<span class="tooltip-row"><span class="tooltip-label">Black:</span> <span class="tooltip-value">N/A</span></span>`
+            : `<span class="tooltip-row"><span class="tooltip-label">Black:</span> <span class="tooltip-value">${raceData.black.toFixed(1)}%</span></span>`);
+        }
+        if (asianRaceOnEl.checked) {
+          lines.push((raceData == null)
+            ? `<span class="tooltip-row"><span class="tooltip-label">Asian:</span> <span class="tooltip-value">N/A</span></span>`
+            : `<span class="tooltip-row"><span class="tooltip-label">Asian:</span> <span class="tooltip-value">${raceData.asian.toFixed(1)}%</span></span>`);
+        }
+        if (hispanicRaceOnEl.checked) {
+          lines.push((raceData == null)
+            ? `<span class="tooltip-row"><span class="tooltip-label">Hispanic:</span> <span class="tooltip-value">N/A</span></span>`
+            : `<span class="tooltip-row"><span class="tooltip-label">Hispanic:</span> <span class="tooltip-value">${raceData.hispanic.toFixed(1)}%</span></span>`);
+        }
+        tooltipEl.innerHTML = lines.join("");
         tooltipEl.style.display = "block";
         placeTooltip(event);
       })
