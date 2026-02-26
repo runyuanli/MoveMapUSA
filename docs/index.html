@@ -495,6 +495,22 @@
         <div class="filter-note">Source: IHME county homicide rate (2019, all ages)</div>
       </div>
       <div class="filter-block">
+        <div class="filter-header">
+          <div class="filter-name">
+            County population between
+            <span class="filter-value" id="populationValue">0 - 3,000,000</span>
+          </div>
+          <label class="switch" aria-label="Toggle county population filter">
+            <input id="populationOn" type="checkbox" />
+            <span class="switch-slider"></span>
+          </label>
+        </div>
+        <div class="dual-range">
+          <input id="populationMin" type="range" min="0" max="3000000" step="10000" value="0" />
+          <input id="populationMax" type="range" min="0" max="3000000" step="10000" value="3000000" />
+        </div>
+      </div>
+      <div class="filter-block">
         <div class="race-section-title">Race share between</div>
         <div class="race-subfilter">
           <div class="filter-header">
@@ -597,6 +613,8 @@
   const lifeSlider = document.getElementById('lifeSlider');
   const wageSlider = document.getElementById('wageSlider');
   const homicideSlider = document.getElementById('homicideSlider');
+  const populationMinEl = document.getElementById('populationMin');
+  const populationMaxEl = document.getElementById('populationMax');
   const whiteRaceMinEl = document.getElementById('whiteRaceMin');
   const whiteRaceMaxEl = document.getElementById('whiteRaceMax');
   const blackRaceMinEl = document.getElementById('blackRaceMin');
@@ -609,6 +627,7 @@
   const lifeOnEl = document.getElementById('lifeOn');
   const wageOnEl = document.getElementById('wageOn');
   const homicideOnEl = document.getElementById('homicideOn');
+  const populationOnEl = document.getElementById('populationOn');
   const whiteRaceOnEl = document.getElementById('whiteRaceOn');
   const blackRaceOnEl = document.getElementById('blackRaceOn');
   const asianRaceOnEl = document.getElementById('asianRaceOn');
@@ -617,6 +636,7 @@
   const lifeValueEl = document.getElementById('lifeValue');
   const wageValueEl = document.getElementById('wageValue');
   const homicideValueEl = document.getElementById('homicideValue');
+  const populationValueEl = document.getElementById('populationValue');
   const whiteRaceValueEl = document.getElementById('whiteRaceValue');
   const blackRaceValueEl = document.getElementById('blackRaceValue');
   const asianRaceValueEl = document.getElementById('asianRaceValue');
@@ -627,6 +647,7 @@
   lifeValueEl.textContent = `${Number(lifeSlider.value).toFixed(1)} years`;
   wageValueEl.textContent = fmt(Number(wageSlider.value).toFixed(2));
   homicideValueEl.textContent = `${Number(homicideSlider.value).toFixed(1)}`;
+  populationValueEl.textContent = `${Number(populationMinEl.value).toLocaleString('en-US')} - ${Number(populationMaxEl.value).toLocaleString('en-US')}`;
   whiteRaceValueEl.textContent = `${Number(whiteRaceMinEl.value).toFixed(1)}% - ${Number(whiteRaceMaxEl.value).toFixed(1)}%`;
   blackRaceValueEl.textContent = `${Number(blackRaceMinEl.value).toFixed(1)}% - ${Number(blackRaceMaxEl.value).toFixed(1)}%`;
   asianRaceValueEl.textContent = `${Number(asianRaceMinEl.value).toFixed(1)}% - ${Number(asianRaceMaxEl.value).toFixed(1)}%`;
@@ -734,6 +755,22 @@
     return race;
   }
 
+  function parsePopulationTSV(text) {
+    const pop = new Map();
+    const lines = text.split(/\r?\n/);
+    for (const line of lines) {
+      if (!line.trim() || line.trim().startsWith("#")) continue;
+      const parts = line.split(/\t/);
+      if (parts.length < 2) continue;
+      const fips = parts[0].trim();
+      const value = Number(parts[1].trim());
+      if (!/^\d{5}$/.test(fips)) continue;
+      if (!Number.isFinite(value)) continue;
+      pop.set(fips, value);
+    }
+    return pop;
+  }
+
   function setStatus(msg) { statusEl.textContent = msg; }
   function normalizeRange(minEl, maxEl) {
     let min = Number(minEl.value);
@@ -817,13 +854,15 @@
     fetchTextAny(["data/life_expectancy.tsv", "/life_expectancy.tsv"]),
     fetchTextAny(["data/minimum_wage.tsv", "/minimum_wage.tsv"]),
     fetchTextAny(["data/homicide_rate.tsv", "/homicide_rate.tsv"]),
-    fetchTextAny(["data/race_data.tsv", "/race_data.tsv"])
-  ]).then(([topology, hiresGeo, pricesText, lifeText, wageText, homicideText, raceText]) => {
+    fetchTextAny(["data/race_data.tsv", "/race_data.tsv"]),
+    fetchTextAny(["data/population.tsv", "/population.tsv"])
+  ]).then(([topology, hiresGeo, pricesText, lifeText, wageText, homicideText, raceText, populationText]) => {
     const prices = parsePricesTSV(pricesText);
     const life = parseLifeTSV(lifeText);
     const wage = parseWageTSV(wageText);
     const homicide = parseHomicideTSV(homicideText);
     const race = parseRaceTSV(raceText);
+    const population = parsePopulationTSV(populationText);
 
     const countiesObj = topology.objects && (topology.objects.counties || topology.objects.county);
     if (!countiesObj) {
@@ -857,6 +896,7 @@
       f.properties.wage = wage.has(id) ? wage.get(id) : (wage.has(rawId) ? wage.get(rawId) : null);
       f.properties.homicide = homicide.has(id) ? homicide.get(id) : (homicide.has(rawId) ? homicide.get(rawId) : null);
       f.properties.race = race.get(id) || race.get(rawId) || null;
+      f.properties.population = population.has(id) ? population.get(id) : (population.has(rawId) ? population.get(rawId) : null);
     }
 
     const countyFeatures = counties.features.filter(f => !f.properties.isCity);
@@ -889,6 +929,7 @@
       city.properties.wage = best.properties.wage;
       city.properties.homicide = best.properties.homicide;
       city.properties.race = best.properties.race;
+      city.properties.population = best.properties.population;
       city.properties.parentFips = best.properties.fips;
       city.properties.displayName = (best.properties && (best.properties.name || best.properties.NAME))
         ? String(best.properties.name || best.properties.NAME).trim()
@@ -927,6 +968,7 @@
         const mw = d.properties.wage;
         const hr = d.properties.homicide;
         const raceData = d.properties.race;
+        const pop = d.properties.population;
         const lines = [];
         lines.push(`<div class="tooltip-title">${countyName}, ${stateName}</div>`);
         if (priceOnEl.checked) {
@@ -948,6 +990,11 @@
           lines.push((hr == null)
             ? `<span class="tooltip-row"><span class="tooltip-label">Homicide rate:</span> <span class="tooltip-value">N/A</span></span>`
             : `<span class="tooltip-row"><span class="tooltip-label">Homicide rate:</span> <span class="tooltip-value">${hr.toFixed(1)} per 100k</span></span>`);
+        }
+        if (populationOnEl.checked) {
+          lines.push((pop == null)
+            ? `<span class="tooltip-row"><span class="tooltip-label">Population:</span> <span class="tooltip-value">N/A</span></span>`
+            : `<span class="tooltip-row"><span class="tooltip-label">Population:</span> <span class="tooltip-value">${Math.round(pop).toLocaleString('en-US')}</span></span>`);
         }
         if (whiteRaceOnEl.checked) {
           lines.push((raceData == null)
@@ -1009,10 +1056,12 @@
       const minLife = Number(lifeSlider.value);
       const minWage = Number(wageSlider.value);
       const maxHomicide = Number(homicideSlider.value);
+      const [populationMin, populationMax] = normalizeRange(populationMinEl, populationMaxEl);
       const [whiteMin, whiteMax] = normalizeRange(whiteRaceMinEl, whiteRaceMaxEl);
       const [blackMin, blackMax] = normalizeRange(blackRaceMinEl, blackRaceMaxEl);
       const [asianMin, asianMax] = normalizeRange(asianRaceMinEl, asianRaceMaxEl);
       const [hispanicMin, hispanicMax] = normalizeRange(hispanicRaceMinEl, hispanicRaceMaxEl);
+      updateDualRangeFill(populationMinEl, populationMaxEl);
       updateDualRangeFill(whiteRaceMinEl, whiteRaceMaxEl);
       updateDualRangeFill(blackRaceMinEl, blackRaceMaxEl);
       updateDualRangeFill(asianRaceMinEl, asianRaceMaxEl);
@@ -1021,6 +1070,7 @@
       const useLife = lifeOnEl.checked;
       const useWage = wageOnEl.checked;
       const useHomicide = homicideOnEl.checked;
+      const usePopulation = populationOnEl.checked;
       const useWhiteRace = whiteRaceOnEl.checked;
       const useBlackRace = blackRaceOnEl.checked;
       const useAsianRace = asianRaceOnEl.checked;
@@ -1029,6 +1079,7 @@
       lifeValueEl.textContent = `${minLife.toFixed(1)} years`;
       wageValueEl.textContent = `$${minWage.toFixed(2)}`;
       homicideValueEl.textContent = `${maxHomicide.toFixed(1)}`;
+      populationValueEl.textContent = `${Math.round(populationMin).toLocaleString('en-US')} - ${Math.round(populationMax).toLocaleString('en-US')}`;
       whiteRaceValueEl.textContent = `${whiteMin.toFixed(1)}% - ${whiteMax.toFixed(1)}%`;
       blackRaceValueEl.textContent = `${blackMin.toFixed(1)}% - ${blackMax.toFixed(1)}%`;
       asianRaceValueEl.textContent = `${asianMin.toFixed(1)}% - ${asianMax.toFixed(1)}%`;
@@ -1037,6 +1088,8 @@
       lifeSlider.disabled = !useLife;
       wageSlider.disabled = !useWage;
       homicideSlider.disabled = !useHomicide;
+      populationMinEl.disabled = !usePopulation;
+      populationMaxEl.disabled = !usePopulation;
       whiteRaceMinEl.disabled = !useWhiteRace;
       whiteRaceMaxEl.disabled = !useWhiteRace;
       blackRaceMinEl.disabled = !useBlackRace;
@@ -1049,6 +1102,8 @@
       const blackWrap = blackRaceMinEl.closest(".dual-range");
       const asianWrap = asianRaceMinEl.closest(".dual-range");
       const hispanicWrap = hispanicRaceMinEl.closest(".dual-range");
+      const populationWrap = populationMinEl.closest(".dual-range");
+      if (populationWrap) populationWrap.classList.toggle("is-disabled", !usePopulation);
       if (whiteWrap) whiteWrap.classList.toggle("is-disabled", !useWhiteRace);
       if (blackWrap) blackWrap.classList.toggle("is-disabled", !useBlackRace);
       if (asianWrap) asianWrap.classList.toggle("is-disabled", !useAsianRace);
@@ -1060,16 +1115,18 @@
         const le = d.properties.life;
         const mw = d.properties.wage;
         const hr = d.properties.homicide;
+        const pop = d.properties.population;
         const raceData = d.properties.race;
         const passPrice = !usePrice || (p != null && p <= maxPrice);
         const passLife = !useLife || (le != null && le >= minLife);
         const passWage = !useWage || (mw != null && mw >= minWage);
         const passHomicide = !useHomicide || (hr != null && hr <= maxHomicide);
+        const passPopulation = !usePopulation || (pop != null && pop >= populationMin && pop <= populationMax);
         const passWhiteRace = !useWhiteRace || (raceData != null && raceData.white >= whiteMin && raceData.white <= whiteMax);
         const passBlackRace = !useBlackRace || (raceData != null && raceData.black >= blackMin && raceData.black <= blackMax);
         const passAsianRace = !useAsianRace || (raceData != null && raceData.asian >= asianMin && raceData.asian <= asianMax);
         const passHispanicRace = !useHispanicRace || (raceData != null && raceData.hispanic >= hispanicMin && raceData.hispanic <= hispanicMax);
-        const match = passPrice && passLife && passWage && passHomicide && passWhiteRace && passBlackRace && passAsianRace && passHispanicRace;
+        const match = passPrice && passLife && passWage && passHomicide && passPopulation && passWhiteRace && passBlackRace && passAsianRace && passHispanicRace;
         if (match && !d.properties.isCity) {
           remaining += 1;
         }
@@ -1078,7 +1135,7 @@
       });
       citySel.raise();
       if (stateBorderPath) stateBorderPath.raise();
-      const activeCount = (usePrice ? 1 : 0) + (useLife ? 1 : 0) + (useWage ? 1 : 0) + (useHomicide ? 1 : 0)
+      const activeCount = (usePrice ? 1 : 0) + (useLife ? 1 : 0) + (useWage ? 1 : 0) + (useHomicide ? 1 : 0) + (usePopulation ? 1 : 0)
         + (useWhiteRace ? 1 : 0) + (useBlackRace ? 1 : 0) + (useAsianRace ? 1 : 0) + (useHispanicRace ? 1 : 0);
       if (activeCount === 0) {
         setStatus(`All filters off. Showing all counties: ${remaining} out of ${totalCounties}`);
@@ -1091,6 +1148,8 @@
     lifeSlider.addEventListener("input", apply);
     wageSlider.addEventListener("input", apply);
     homicideSlider.addEventListener("input", apply);
+    populationMinEl.addEventListener("input", apply);
+    populationMaxEl.addEventListener("input", apply);
     whiteRaceMinEl.addEventListener("input", apply);
     whiteRaceMaxEl.addEventListener("input", apply);
     blackRaceMinEl.addEventListener("input", apply);
@@ -1103,6 +1162,7 @@
     lifeOnEl.addEventListener("change", apply);
     wageOnEl.addEventListener("change", apply);
     homicideOnEl.addEventListener("change", apply);
+    populationOnEl.addEventListener("change", apply);
     whiteRaceOnEl.addEventListener("change", apply);
     blackRaceOnEl.addEventListener("change", apply);
     asianRaceOnEl.addEventListener("change", apply);
